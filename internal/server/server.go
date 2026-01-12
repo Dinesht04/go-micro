@@ -16,7 +16,7 @@ type Server struct {
 
 func NewServer(rdb *redis.Client) *Server {
 	server := &Server{
-		Port: "8080",
+		Port: ":8080",
 		rdb:  rdb,
 	}
 	return server
@@ -41,6 +41,8 @@ func (s *Server) StartServer() {
 			})
 		}
 		fmt.Println(task)
+
+		//mantain a map in memory
 
 		//how to implement the retries mechanic?
 		//how will the queue insertion work? - draw on excalidraw

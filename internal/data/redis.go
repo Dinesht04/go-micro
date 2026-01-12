@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 
@@ -29,20 +30,34 @@ func NewRedisClient(ctx context.Context) *redis.Client {
 		Retries: 3,
 	}
 
-	err := rdb.Set(ctx, "sampleTask", task, 0).Err()
+	encodedTask, err := json.Marshal(&task)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	savedTask := &Task{}
+	err = rdb.Set(ctx, "sampleTask", encodedTask, 0).Err()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	err = rdb.Get(ctx, "sampleTask").Scan(savedTask)
+	savedTask := rdb.Get(ctx, "sampleTask")
 	if err == redis.Nil {
 		fmt.Println("sampleTask dont exist")
 	} else if err != nil {
 		log.Fatal(err)
 	} else {
-		fmt.Println("sample Task: ", savedTask.Retries)
+		var decodedTask Task
+
+		byteTask, err := savedTask.Bytes()
+		if err != nil {
+			log.Panic(err)
+		}
+		err = json.Unmarshal(byteTask, &decodedTask)
+		if err != nil {
+			fmt.Println(string(byteTask))
+			log.Panic("unamrshal", err)
+		}
+		fmt.Println("sample task:", decodedTask)
 	}
 
 	return rdb
