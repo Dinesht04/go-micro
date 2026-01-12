@@ -40,4 +40,10 @@ Response
 upon request, insert into queue.
 Upon fail, insert into queue
 
-Should have dedicated logs and metrics endpoint? what type of auth for that?
+Should have dedicated logs and metrics endpoint? what type of auth for that? 
+
+
+the /enqueue endpoint will enqueue the task using RPUSH
+the workers will running already in separate goroutines, upon enqueue, they will take out the task when available using BLPOP. check how many retries,
+run the retries that many times. They will be in an infinite for loop, so that they keep checking the list. and since BLPOP is a blocking function, they won't move
+forward unless that shi available in list
