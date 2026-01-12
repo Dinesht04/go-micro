@@ -1,0 +1,43 @@
+task{
+    retries
+    type 
+    payload
+}
+
+tpye = email | custom
+payload 
+    email - SMTP
+        recepient email
+        OTP
+            how many digits
+        Message
+            type - password or username reset | normal message | subscription
+            content - in markdown
+            subscription? - daily | weekly | yearly
+            User wants to unsubscribe?
+    Do I need to spin up an aws image for this to work or can I acheive this internally only with SMTP?
+
+    custom - Dockerfile
+        Dockerfile Content (needs validation)
+        Output?
+
+    If running the docker image returns the wanted output in the shell, then the task can be deemed successful? or should running the image be successful
+    and the output should be the output, doesn't matter if it's error or successful. 
+        
+Response
+    email
+        Successful email sent
+            success code
+            mail sent successfully
+        Error Encountered
+            error code
+            error message
+
+
+        
+
+
+upon request, insert into queue.
+Upon fail, insert into queue
+
+Should have dedicated logs and metrics endpoint? what type of auth for that?

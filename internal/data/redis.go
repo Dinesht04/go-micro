@@ -56,8 +56,6 @@ func NewRedisClient(ctx context.Context) *redis.Client {
 	} else if err != nil {
 		log.Fatal(err)
 	} else {
-		// var res Task
-		// err = json.Unmarshal([]byte(val), &res)
 		fmt.Println("sample Task: ", savedTask.Retries)
 	}
 
