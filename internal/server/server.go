@@ -61,9 +61,13 @@ func (s *Server) StartServer() {
 
 		//how to implement the retries mechanic?
 		//how will the queue insertion work? - draw on excalidraw
+
 	})
 
 	r.GET("/task", func(ctx *gin.Context) {
+
+		//log tasks here?
+
 		val := s.rdb.RPop(ctx, "taskQueue")
 
 		if err := val.Err(); err == redis.Nil {
