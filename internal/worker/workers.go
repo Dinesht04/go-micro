@@ -62,7 +62,7 @@ func Worker(rdb *redis.Client, ctx context.Context) {
 
 		switch taskType {
 		case "generateOtp":
-			GenerateOtp()
+			GenerateOtp(task, rdb, ctx)
 		case "verifyOtp":
 			VerifyOtp()
 		case "message":

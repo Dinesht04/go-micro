@@ -13,3 +13,9 @@ type Payload struct {
 	Length    int    `json:"length" binding:"required_if=Type generateOtp,lte=8"`
 	Frequency int    `json:"frequency" binding:"required,lte=8"`
 }
+
+type Email struct {
+	Content   string
+	Subject   string
+	Recipient string
+}
