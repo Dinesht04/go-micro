@@ -1,4 +1,4 @@
-package worker
+package email
 
 import (
 	"context"
@@ -128,8 +128,12 @@ func Subscribe(task data.Task, rdb *redis.Client, ctx context.Context, c *cron.C
 	//Content should be accessed dynamically in cron job since it is subject to change.
 }
 
-func Unsubscribe(task data.Task, rdb *redis.Client) {
-
+func Unsubscribe(task data.Task, rdb *redis.Client, c *cron.CronJobStation) (bool, string, error) {
+	err := c.Unsubscribe(task.Payload.UserID)
+	if err != nil {
+		return false, "error unsubscribing", err
+	}
+	return true, "unsubscribed successfully", nil
 }
 
 func GenerateRandomNumber() string {

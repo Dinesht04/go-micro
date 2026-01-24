@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dinesht04/go-micro/internal/data"
+	"github.com/dinesht04/go-micro/internal/email"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
@@ -65,16 +66,16 @@ func Worker(rdb *redis.Client, ctx context.Context) {
 
 		switch taskType {
 		case "generateOtp":
-			status, logs, err = GenerateOtp(task, rdb, ctx)
+			status, logs, err = email.GenerateOtp(task, rdb, ctx)
 		case "message":
 			//this can stay here
-			status, logs, err = Sendmessage(task, rdb)
+			status, logs, err = email.Sendmessage(task, rdb)
 		case "subscribe":
 			//This can stay here
-			Subscribe()
+			email.Subscribe()
 		case "unsubscribe":
 			//this can stay here
-			Unsubscribe()
+			email.Unsubscribe()
 		default:
 			fmt.Println("Random shi bruh")
 		}

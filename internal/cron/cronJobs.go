@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/smtp"
+	"os"
 
 	"github.com/dinesht04/go-micro/internal/data"
-	"github.com/dinesht04/go-micro/internal/worker"
 	"github.com/redis/go-redis/v9"
 	"github.com/robfig/cron/v3"
 )
@@ -46,7 +47,7 @@ func (c *CronJobStation) Subscribe(userEmailId string, frequency string, content
 	return nil
 }
 
-func (c *CronJobStation) Unsubscribe(clientID string, userEmailId string) {
+func (c *CronJobStation) Unsubscribe(userEmailId string) error {
 	Record, ok := c.Jobs[userEmailId]
 	if !ok {
 		log.Fatal("Record doesnt exist how to unsubscruibe?")
@@ -74,13 +75,13 @@ func RegisterCronSendingEmailJob(c *CronJobStation, userEmailId string, frequenc
 			}
 		}
 
-		email := &data.Email{
+		mail := &data.Email{
 			Recipient: userEmailId,
-			Subject:   "Automated Mail",
+			Subject:   "Automated email",
 			Content:   content,
 		}
 
-		success, err := worker.SendEmail(email)
+		success, err := SendEmailCron(mail)
 		if !success {
 			fmt.Println("Err sending email")
 			fmt.Println(err)
@@ -89,4 +90,31 @@ func RegisterCronSendingEmailJob(c *CronJobStation, userEmailId string, frequenc
 	})
 
 	return cronId, err
+}
+
+func SendEmailCron(email *data.Email) (bool, error) {
+	fmt.Println("sending mail?")
+
+	auth := smtp.PlainAuth("", os.Getenv("smtp_user"), os.Getenv("smtp_pass"), os.Getenv("smtp_server"))
+
+	// Connect to the server, authenticate, set the sender and recipient,
+	// and send the email all in one step.
+	to := []string{email.Recipient}
+
+	msgTo := fmt.Sprintf("To: %s\r\n", email.Recipient)
+
+	msgSubject := fmt.Sprintf("%s\r\n", email.Subject)
+
+	msgContent := fmt.Sprintf("%s\r\n", email.Content)
+
+	msg := []byte(msgTo +
+		msgSubject +
+		"\r\n" +
+		msgContent)
+	err := smtp.SendMail(fmt.Sprintf("%s:%s", os.Getenv("smtp_server"), os.Getenv("smtp_port")), auth, os.Getenv("smtp_user"), to, msg)
+	if err != nil {
+		log.Fatal(err)
+		return false, err
+	}
+	return true, nil
 }

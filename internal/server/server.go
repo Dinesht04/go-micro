@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/dinesht04/go-micro/internal/data"
-	"github.com/dinesht04/go-micro/internal/worker"
+	"github.com/dinesht04/go-micro/internal/email"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 )
@@ -107,7 +107,7 @@ func (s *Server) StartServer() {
 			log.Fatal(err)
 		}
 
-		verified := worker.VerifyOtp(req, s.rdb, ctx)
+		verified := email.VerifyOtp(req, s.rdb, ctx)
 
 		ctx.JSON(http.StatusOK, gin.H{
 			"type":     "otp verification",
