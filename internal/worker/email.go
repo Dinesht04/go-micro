@@ -9,11 +9,13 @@ import (
 	"net/smtp"
 	"os"
 
+	"github.com/dinesht04/go-micro/internal/cron"
 	"github.com/dinesht04/go-micro/internal/data"
+	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 )
 
-func sendEmail(email *data.Email) (bool, error) {
+func SendEmail(email *data.Email) (bool, error) {
 	fmt.Println("sending mail?")
 
 	auth := smtp.PlainAuth("", os.Getenv("smtp_user"), os.Getenv("smtp_pass"), os.Getenv("smtp_server"))
@@ -66,18 +68,69 @@ func GenerateOtp(task data.Task, rdb *redis.Client, ctx context.Context) (bool, 
 		Subject:   "OTP Requested",
 	}
 
-	status, err := sendEmail(email)
+	status, err := SendEmail(email)
 	return status, "Success!!", err
 
 }
 
-func VerifyOtp() {}
+func VerifyOtp(data data.VerifyOtpParams, rdb *redis.Client, ctx *gin.Context) bool {
+	// var verified bool
 
-func Sendmessage() {}
+	res, err := rdb.HGet(ctx, "otp_hashmap", data.UserID).Result()
+	if err != nil {
+		if err == redis.Nil {
+			return false
+		} else {
+			log.Fatal(err)
+		}
+	}
 
-func Subscribe() {}
+	if res == data.OTP {
+		return true
+	} else {
+		return false
+	}
 
-func Unsubscribe() {}
+}
+
+func Sendmessage(task data.Task, rdb *redis.Client) (bool, string, error) {
+
+	email := &data.Email{
+		Subject:   task.Payload.Subject,
+		Content:   task.Payload.Content,
+		Recipient: task.Payload.UserID,
+	}
+
+	status, err := SendEmail(email)
+	if err != nil {
+		return status, "Sending Message email failed", err
+	}
+
+	return status, "Sent Message Successfully!", err
+
+}
+
+func Subscribe(task data.Task, rdb *redis.Client, ctx context.Context, c *cron.CronJobStation) (bool, string, error) {
+
+	err := rdb.HSet(ctx, "subscriptionContentMap", task.Payload.ContentType, task.Payload.Content).Err()
+	if err != nil {
+		return false, "subscription content insertiong error", err
+	}
+
+	err = c.Subscribe(task.Payload.UserID, task.Payload.Frequency, task.Payload.ContentType)
+
+	return true, "subscribed successfully", nil
+
+	//since this is an in-house feature repository, we don't need to maintain a list of userIds and their corresponding cronIds?
+	//Content hashmap would contain the s
+
+	// content => This can be changed through /updateSubscriptionContent
+	//Content should be accessed dynamically in cron job since it is subject to change.
+}
+
+func Unsubscribe(task data.Task, rdb *redis.Client) {
+
+}
 
 func GenerateRandomNumber() string {
 	maxInt := big.NewInt(9)

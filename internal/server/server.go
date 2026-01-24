@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/dinesht04/go-micro/internal/data"
+	"github.com/dinesht04/go-micro/internal/worker"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 )
@@ -41,6 +42,7 @@ func (s *Server) StartServer() {
 			ctx.JSON(http.StatusBadRequest, gin.H{
 				"ERROR": "INVALID FORMAT",
 			})
+			log.Fatal(err)
 		}
 		fmt.Println(task)
 
@@ -98,11 +100,20 @@ func (s *Server) StartServer() {
 
 	})
 
-	r.POST("/mail", func(ctx *gin.Context) {
+	r.GET("/verify", func(ctx *gin.Context) {
+		var req data.VerifyOtpParams
+		err := ctx.ShouldBind(&req)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-		//log tasks here?
+		verified := worker.VerifyOtp(req, s.rdb, ctx)
 
-		// sendEmail()
+		ctx.JSON(http.StatusOK, gin.H{
+			"type":     "otp verification",
+			"verified": verified,
+		})
+
 		return
 	})
 

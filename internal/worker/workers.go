@@ -66,12 +66,9 @@ func Worker(rdb *redis.Client, ctx context.Context) {
 		switch taskType {
 		case "generateOtp":
 			status, logs, err = GenerateOtp(task, rdb, ctx)
-		case "verifyOtp":
-			//Prolly have to shift this to another endpoint since it requires a response.
-			VerifyOtp()
 		case "message":
 			//this can stay here
-			Sendmessage()
+			status, logs, err = Sendmessage(task, rdb)
 		case "subscribe":
 			//This can stay here
 			Subscribe()
