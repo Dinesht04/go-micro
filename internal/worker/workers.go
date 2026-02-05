@@ -2,17 +2,14 @@ package worker
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/json"
-	"fmt"
 	"log"
-	"math/big"
+	"log/slog"
 	"time"
 
 	"github.com/dinesht04/go-micro/internal/cron"
 	"github.com/dinesht04/go-micro/internal/data"
 	"github.com/dinesht04/go-micro/internal/email"
-	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -30,25 +27,30 @@ func NewWorkStation(rdb *redis.Client, num int, cron *cron.CronJobStation) *Work
 	}
 }
 
-func (w *WorkStation) StartWorkers(ctx context.Context) {
+func (w *WorkStation) StartWorkers(ctx context.Context, logger *slog.Logger) {
 
 	for range w.Workers {
-		go Worker(w.Rdb, ctx, w.CronStation)
+		go Worker(w.Rdb, ctx, w.CronStation, logger)
 	}
 }
 
-func Worker(rdb *redis.Client, ctx context.Context, c *cron.CronJobStation) {
+func Worker(rdb *redis.Client, ctx context.Context, cron *cron.CronJobStation, logger *slog.Logger) {
 
 	for {
 
 		results, err := rdb.BLPop(ctx, time.Minute, "taskQueue").Result()
 		if err == redis.Nil {
-			fmt.Println("NOthign found within timeout, waiting for 1 min again")
+			logger.Info("Nothing found in queue within timeout, waiting for 1 min again")
 			continue
 		}
 
+		err = rdb.Incr(ctx, "totalTasksExecuted").Err()
+		if err != nil {
+			logger.Info("Error incrementing total tasks", "error", err)
+
+		}
+
 		result := results[1]
-		fmt.Println("task popped is:", result)
 
 		var task data.Task
 
@@ -59,7 +61,9 @@ func Worker(rdb *redis.Client, ctx context.Context, c *cron.CronJobStation) {
 
 		task.Retries = task.Retries - 1
 
-		task.Id = uuid.NewString()
+		logger.Info("Task Popped from queue",
+			"taskId", task.Id,
+			"taskName", task.Task)
 
 		taskType := task.Type
 		// status := sendEmail()
@@ -75,56 +79,90 @@ func Worker(rdb *redis.Client, ctx context.Context, c *cron.CronJobStation) {
 			status, logs, err = email.Sendmessage(task, rdb)
 		case "subscribe":
 			//This can stay here
-			status, logs, err = email.Subscribe(task, rdb, ctx, c)
+			status, logs, err = email.Subscribe(task, rdb, ctx, cron)
 		case "unsubscribe":
 			//should this stay here?
-			status, logs, err = email.Unsubscribe(task, rdb, c)
+			status, logs, err = email.Unsubscribe(task, rdb, cron)
 		default:
-			fmt.Println("Random shi bruh")
+			logger.Info("Invalid Task Type", "unknown_task_type", task.Type)
 		}
 
-		//send this to /metric endpoint? it will be a stream right? or a store of all the logs? interesting
-		fmt.Println("log: ", logs)
+		logger.Info("Task processed",
+			"log", logs,
+			"taskId", task.Id,
+			"taskName", task.Task,
+			"taskType", taskType)
 
+		// error or status pe check?
 		if !status {
-			fmt.Println("Performing Task: ", task.Id, " Failed!, Adding back to queue")
-			fmt.Println("Retries left: ", task.Retries)
-			fmt.Println("Error occured", err)
+
+			err = rdb.Incr(ctx, "totalTasksFailed").Err()
+			if err != nil {
+				logger.Info("Error incrementing failed tasks", "error", err)
+
+			}
+
+			if err != nil {
+				logger.Info("Task Failed Due to error",
+					"error", err,
+					"taskId", task.Id,
+					"taskName", task.Task,
+					"taskType", taskType,
+					"Retries left", task.Retries,
+				)
+
+			} else {
+				logger.Info("Task Failed",
+					"latest_logs", logs,
+					"taskId", task.Id,
+					"taskName", task.Task,
+					"taskType", taskType,
+					"Retries left", task.Retries,
+				)
+
+			}
 
 			if task.Retries <= 0 {
-				fmt.Println("Task: ", task.Task, " Retries ended, returning...")
+				logger.Info("Retries Finished",
+					"latest_logs", logs,
+					"taskId", task.Id,
+					"taskName", task.Task,
+					"taskType", taskType,
+					"Retries left", task.Retries)
 				continue
 			}
+
+			logger.Info("Adding task back to Queue...",
+				"latest_logs", logs,
+				"taskId", task.Id,
+				"taskName", task.Task,
+				"taskType", taskType,
+				"Retries left", task.Retries)
 
 			encodedTask, err := json.Marshal(&task)
 			if err != nil {
 				log.Fatal(err)
 			}
 
-			fmt.Println("Inserting again....")
 			err = rdb.RPush(ctx, "taskQueue", encodedTask).Err()
 			if err != nil {
 				log.Fatal(err)
 			}
 
 		} else {
-			fmt.Println("Performed Task: ", task.Task, " Successfully!")
+			logger.Info("Performed Task Successfully!!!",
+				"latest_logs", logs,
+				"taskId", task.Id,
+				"taskName", task.Task,
+				"taskType", taskType)
+
+			err = rdb.Incr(ctx, "totalTasksSuccessful").Err()
+			if err != nil {
+				logger.Info("Error incrementing successful tasks", "error", err)
+
+			}
 		}
 
 	}
 
-}
-
-func executeTask() bool {
-	max := big.NewInt(30)
-	failure := big.NewInt(10)
-	rand, err := rand.Int(rand.Reader, max)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if rand.Int64() > failure.Int64() {
-		return true
-	} else {
-		return false
-	}
 }

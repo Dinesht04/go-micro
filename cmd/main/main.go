@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"log"
+	"log/slog"
+	"os"
 
 	"github.com/dinesht04/go-micro/internal/cron"
 	"github.com/dinesht04/go-micro/internal/data"
@@ -23,12 +25,18 @@ func main() {
 
 	ctx := context.Background()
 
-	rdb := data.NewRedisClient(ctx)
-	server := server.NewServer(rdb)
-	CronJobStation := cron.CreateNewCronJobStation(ctx, rdb)
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+
+	rdb, err := data.NewRedisClient(ctx, logger)
+	if err != nil {
+		logger.Info("Error Initiating redis client", "error", err)
+	}
+
+	server := server.NewServer(rdb, logger)
+	CronJobStation := cron.CreateNewCronJobStation(ctx, rdb, logger)
 
 	Workstation := worker.NewWorkStation(rdb, 3, CronJobStation)
-	Workstation.StartWorkers(ctx)
+	Workstation.StartWorkers(ctx, logger)
 
 	server.StartServer()
 

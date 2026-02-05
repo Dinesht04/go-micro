@@ -53,5 +53,8 @@ run the retries that many times. They will be in an infinite for loop, so that t
 forward unless that shi available in list
 retry logic in the goroutine
 
-// the key for the hashmap should be for each of the client's id
-// have to implement rate limiting for the generateOtp
+// have to implement rate limiting for the 
+
+//implement subject in the redis storage as well.
+
+//need to fix the content shi while the subscribe request is sent.

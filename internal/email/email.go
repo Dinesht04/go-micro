@@ -16,8 +16,6 @@ import (
 )
 
 func SendEmail(email *data.Email) (bool, error) {
-	fmt.Println("sending mail?")
-
 	auth := smtp.PlainAuth("", os.Getenv("smtp_user"), os.Getenv("smtp_pass"), os.Getenv("smtp_server"))
 
 	// Connect to the server, authenticate, set the sender and recipient,
@@ -36,7 +34,6 @@ func SendEmail(email *data.Email) (bool, error) {
 		msgContent)
 	err := smtp.SendMail(fmt.Sprintf("%s:%s", os.Getenv("smtp_server"), os.Getenv("smtp_port")), auth, os.Getenv("smtp_user"), to, msg)
 	if err != nil {
-		log.Fatal(err)
 		return false, err
 	}
 	return true, nil
@@ -50,17 +47,13 @@ func GenerateOtp(task data.Task, rdb *redis.Client, ctx context.Context) (bool, 
 		otp += string(GenerateRandomNumber())
 	}
 
-	fmt.Println("OTP generated bruh: ", otp)
-
-	res, err := rdb.HSetEXWithArgs(ctx, "otp_hashmap", &redis.HSetEXOptions{
+	_, err := rdb.HSetEXWithArgs(ctx, "otp_hashmap", &redis.HSetEXOptions{
 		ExpirationType: redis.HSetEXExpirationEX,
 		ExpirationVal:  120,
 	}, task.Payload.UserID, otp).Result()
 	if err != nil {
 		return false, "Task failed during Redis insertion", err
 	}
-
-	fmt.Println("OTP stored in HMAP: successfully, result: ", res)
 
 	email := &data.Email{
 		Content:   fmt.Sprintf("Your OTP is: %s", otp),
@@ -69,26 +62,29 @@ func GenerateOtp(task data.Task, rdb *redis.Client, ctx context.Context) (bool, 
 	}
 
 	status, err := SendEmail(email)
-	return status, "Success!!", err
+	if err != nil {
+		return status, "Task failed while sending email", err
+	} else {
+		return status, "Task executed Successfully!", nil
+	}
 
 }
 
-func VerifyOtp(data data.VerifyOtpParams, rdb *redis.Client, ctx *gin.Context) bool {
-	// var verified bool
+func VerifyOtp(data data.VerifyOtpParams, rdb *redis.Client, ctx *gin.Context) (bool, error) {
 
 	res, err := rdb.HGet(ctx, "otp_hashmap", data.UserID).Result()
 	if err != nil {
 		if err == redis.Nil {
-			return false
+			return false, nil
 		} else {
-			log.Fatal(err)
+			return false, err
 		}
 	}
 
 	if res == data.OTP {
-		return true
+		return true, nil
 	} else {
-		return false
+		return false, nil
 	}
 
 }

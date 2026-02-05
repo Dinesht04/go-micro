@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 
 	"github.com/dinesht04/go-micro/internal/data"
 	"github.com/google/uuid"
@@ -21,9 +22,10 @@ type CronJobStation struct {
 	rdb     *redis.Client
 	cron    *cron.Cron
 	Jobs    map[string]userRecord
+	logger  *slog.Logger
 }
 
-func CreateNewCronJobStation(ctx context.Context, rdb *redis.Client) *CronJobStation {
+func CreateNewCronJobStation(ctx context.Context, rdb *redis.Client, logger *slog.Logger) *CronJobStation {
 	c := cron.New()
 	c.Start()
 	return &CronJobStation{
@@ -31,6 +33,7 @@ func CreateNewCronJobStation(ctx context.Context, rdb *redis.Client) *CronJobSta
 		Jobs:    make(map[string]userRecord),
 		context: ctx,
 		rdb:     rdb,
+		logger:  logger,
 	}
 }
 
@@ -46,7 +49,11 @@ func (c *CronJobStation) Subscribe(userEmailId string, frequency string, content
 	}
 
 	c.Jobs[userEmailId+contentType] = record
-	fmt.Println("cron job added successfully")
+	c.logger.Info("Cron Job Added Successfully!",
+		"cronid", cronId,
+		"userEmailID", userEmailId,
+		"frequency", frequency,
+		"contentType", contentType)
 	return nil
 }
 
@@ -56,32 +63,36 @@ func (c *CronJobStation) Unsubscribe(userEmailId string, contentType string) err
 		return fmt.Errorf("Record doesnt exist how to unsubscruibe?")
 	}
 	c.cron.Remove(Record.cronId)
-	delete(c.Jobs, userEmailId)
-	fmt.Println("cron job removed successfully")
+	delete(c.Jobs, userEmailId+contentType)
+	c.logger.Info("Cron Job Removed Successfully!",
+		"cronid", Record.cronId,
+		"userEmailID", userEmailId,
+		"contentType", contentType)
+
 	return nil
 }
 
 func RegisterCronSendingEmailJob(c *CronJobStation, userEmailId string, frequency string, contentType string) (cron.EntryID, error) {
-	fmt.Println("Registering for the job")
 
-	cronId, err := c.cron.AddFunc("*/1 * * * *", func() {
-		//this stuff goes to logs
-		fmt.Println("Sending a mail")
+	cronId, err := c.cron.AddFunc(frequency, func() {
 		content, err := c.rdb.HGetAll(c.context, "subscriptionContentMap"+contentType).Result()
 		if err != nil {
 			if err == redis.Nil {
 				fmt.Println("This type of content doesnt exist")
+				c.logger.Info("The type of content doesn't exist in db")
 				return
 			} else {
-				fmt.Println("Err accessing content type")
+				c.logger.Info("Error accessing content type from db")
 				fmt.Println(err)
 				return
 			}
 		}
 
+		taskName := "Automated Email to: " + userEmailId
+
 		messageTask := data.Task{
 			Id:   uuid.NewString(),
-			Task: "Automated Email",
+			Task: taskName,
 			Type: "message",
 			Payload: data.Payload{
 				UserID:  userEmailId,
@@ -93,7 +104,7 @@ func RegisterCronSendingEmailJob(c *CronJobStation, userEmailId string, frequenc
 
 		encodedTask, err := json.Marshal(&messageTask)
 		if err != nil {
-			fmt.Println("Error decoding")
+			c.logger.Info("Error decoding task")
 			fmt.Println(err)
 			return
 		}
@@ -101,10 +112,11 @@ func RegisterCronSendingEmailJob(c *CronJobStation, userEmailId string, frequenc
 		err = c.rdb.RPush(c.context, "taskQueue", encodedTask).Err()
 		if err != nil {
 			fmt.Println("Error Pushing to task Queue")
+			c.logger.Info("Error pushing task to queue", "taskId", messageTask.Id)
 			fmt.Println(err)
 			return
 		} else {
-			fmt.Println("Cron job added automatic email to taskqueue successully")
+			c.logger.Info("Cron job succefful, task added to Queue", "taskId", messageTask.Id)
 		}
 
 	})
