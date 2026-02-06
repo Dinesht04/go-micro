@@ -82,7 +82,7 @@ func (s *Server) StartServer() {
 
 	})
 
-	r.GET("/verify", func(ctx *gin.Context) {
+	r.POST("/verify", func(ctx *gin.Context) {
 		var req data.VerifyOtpParams
 		err := ctx.ShouldBind(&req)
 		if err != nil {

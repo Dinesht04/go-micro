@@ -24,8 +24,8 @@ type Email struct {
 }
 
 type VerifyOtpParams struct {
-	UserID string `json:"userId" binding:"required,email"`
-	OTP    string `json:"otp" binding:"required,min=4,max=8"`
+	UserEmail string `json:"userEmail" binding:"required,email"`
+	Otp       string `json:"otp" binding:"required,min=4,max=8"`
 }
 
 type UpdateContent struct {

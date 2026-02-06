@@ -72,7 +72,7 @@ func GenerateOtp(task data.Task, rdb *redis.Client, ctx context.Context) (bool, 
 
 func VerifyOtp(data data.VerifyOtpParams, rdb *redis.Client, ctx *gin.Context) (bool, error) {
 
-	res, err := rdb.HGet(ctx, "otp_hashmap", data.UserID).Result()
+	res, err := rdb.HGet(ctx, "otp_hashmap", data.UserEmail).Result()
 	if err != nil {
 		if err == redis.Nil {
 			return false, nil
@@ -81,7 +81,7 @@ func VerifyOtp(data data.VerifyOtpParams, rdb *redis.Client, ctx *gin.Context) (
 		}
 	}
 
-	if res == data.OTP {
+	if res == data.Otp {
 		return true, nil
 	} else {
 		return false, nil
