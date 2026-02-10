@@ -88,18 +88,9 @@ func Sendmessage(task data.Task, rdb *redis.Client) (bool, string, error) {
 
 func Subscribe(task data.Task, rdb *redis.Client, ctx context.Context, c *cron.CronJobStation) (bool, string, error) {
 
-	exists, err := rdb.Exists(ctx, "subscriptionContentMap"+task.Payload.ContentType).Result()
-	if err != nil {
-		return false, "error while checking if content type exists", err
-	}
-	//
-	if exists == 0 {
-		return false, fmt.Sprintf("This content type doesn't exist: %s", task.Payload.ContentType), nil
-	}
+	err := c.Subscribe(task.Payload.UserID, task.Payload.Frequency, task.Payload.ContentType)
 
-	err = c.Subscribe(task.Payload.UserID, task.Payload.Frequency, task.Payload.ContentType)
-
-	return true, "subscribed successfully", nil
+	return true, "subscribed successfully", err
 
 	// content => This can be changed through /updateSubscriptionContent
 	//Content should be accessed dynamically in cron job since it is subject to change.

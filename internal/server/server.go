@@ -30,6 +30,7 @@ func (s *Server) StartServer() {
 	r := gin.Default()
 
 	r.GET("/ping", func(c *gin.Context) {
+		s.logger.Info("Endpoint health check")
 		c.JSON(http.StatusOK, gin.H{
 			"message": "pong",
 		})

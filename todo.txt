@@ -69,5 +69,5 @@ to do task:-
     x2)Moving OTP verification Logic into Services
     x3)Moving ContentType logic into Services
   4)Implementing Auth
-  5)Write Logs to a logs.txt file
-  6)Move metric logic into services
+    x5)Write Logs to a logs.txt file
+    x6)Move metric logic into services
