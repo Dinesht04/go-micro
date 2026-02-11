@@ -90,7 +90,6 @@ func HandleSignup(rdb *redis.Client) gin.HandlerFunc {
 		ctx.JSON(http.StatusOK, gin.H{
 			"apiKey": token,
 		})
-		return
 	}
 }
 

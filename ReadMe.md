@@ -24,6 +24,20 @@ Sending emails is a "slow" I/O operation. If your main application waits for an 
 * **Email:** [Native Go SMTP](https://pkg.go.dev/net/smtp) (Built-in email support)
 * **Logging:** [slog](https://pkg.go.dev/log/slog) (Structured JSON logging)
 
+### Environment Variables
+
+To run the service, create a `.env` file in your root directory. The service requires SMTP credentials to send emails and a Redis URI to manage the task queue and user authentication.
+
+| Variable | Description 
+| --- | --- |
+| `smtp_user` | The email address used to send out tasks. 
+| `smtp_pass` | The App Password for the SMTP account. 
+| `smtp_server` | The hostname of your SMTP provider.
+| `smtp_port` | The port for SMTP communication. 
+| `redis_uri` | The address and port of your Redis instance.
+
+
+
 ## Authentication & User Management
 
 The service uses **JWT-based Authentication** to secure its endpoints. Users must first register to receive an API Key (JWT), which must then be provided in the `Authorization` header for all protected routes.
@@ -251,4 +265,4 @@ The requirements for these fields change dynamically based on the `type` selecte
 
 ---
 
-Made by [Dinesh](https://x.com/Dinesht_04)
+Made by [tetrisgod5000](https://x.com/Dinesht_04)

@@ -3,6 +3,7 @@ package data
 import (
 	"context"
 	"log/slog"
+	"os"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -14,7 +15,7 @@ import (
 func NewRedisClient(ctx context.Context, logger *slog.Logger) (*redis.Client, error) {
 
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
+		Addr:     os.Getenv("redis_uri"),
 		Password: "",
 		DB:       0,
 	})
